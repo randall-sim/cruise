@@ -1,0 +1,9 @@
+/workspace/
+/target/
+/node_modules/
+/workspace-test*/
+/.codex/config.toml
+.env*
+!.env.example
+*.log
+*.tsbuildinfo
