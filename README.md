@@ -66,28 +66,77 @@ daemon/                   # cc-daemon application Git repository
       courses/
 ```
 
-The default storage root is `workspace/content`. The existing state format and
-course-relative paths are unchanged. Clone a private content repository into
-that directory on a new installation, or initialize it with `git init`.
+The default storage root is `workspace/content`. The engine creates this folder
+when first accessed and creates state, course folders, course `AGENTS.md` files,
+and memory as you add content. You do not need to create the folder structure
+manually, and Git is optional for local use.
+
+To restore existing content, clone your private content repository into that
+directory before adding courses. For a new Git backup, initialize a separate
+repository there, add a content `.gitignore`, and configure your private remote.
+These Git setup steps are not automatic; the daemon's `/workspace/` ignore rule
+does not protect files committed from inside the separate content repository.
 Never put credentials, browser sessions or derived caches in the content repo.
 Application upgrades must not reset or clean the ignored workspace.
 
-This extracted checkout includes a copy of the existing workspace. Its original
-copy is retained by the parent migration backup. This migration configured a
-separate private content remote; the daemon itself never creates remotes or
-pushes on startup. No course repository is ever a submission destination.
+The daemon itself never creates remotes or pushes on startup. Once you configure
+an authorized private backup remote, Codex follows `AGENTS.md` to commit and push
+completed course-content changes. Instructor and course submission repositories
+must never be used as backup destinations.
 
 ## Codex
 
-Open this daemon directory in Codex. On the **Codex host OS**, run:
+**Open the daemon repository folder as your project in Codex.** In the split
+checkout, select `course-captain/daemon`; if you cloned `cc-daemon` by itself,
+select that clone's root. This is the folder containing `AGENTS.md`, `Cargo.toml`,
+`package.json`, and `scripts/`. Use this folder for course work rather than the
+frontend or the nested content repository, so Codex loads the daemon's agent
+instructions and project tools.
+
+After installing dependencies as described above, run these commands from the
+daemon folder on the **Codex host OS**:
 
 ```sh
 node scripts/setup-codex.mjs
+node scripts/check-mcp.mjs
 ```
 
 For Windows Codex opening a WSL UNC path, run the setup command on Windows; the
-generated launcher runs the course engine inside Ubuntu. Reopen the project to
-load MCP. MCP does not require the HTTP server or frontend to be running.
+generated launcher runs the course engine inside Ubuntu, where you installed
+the dependencies. Run the check command on Windows too. For a native Linux or
+macOS Codex host, run both commands there.
+
+Reopen the project in Codex to load MCP, and approve project trust in Codex if
+prompted. The check command verifies that the tools connect and the workspace
+is readable. MCP does not require the HTTP server or frontend to be running;
+start `course-captain run` when you want to use the browser dashboard.
+
+Ask Codex for course work in ordinary language. It uses the MCP tools to save
+results in your workspace. Lecture-guide creation currently requires a dedicated
+GPT-6 Astra worker at medium reasoning, as specified in
+[the lecture workflow](docs/LECTURE_AGENT.md). Reading recordings and official
+course pages also requires browser/computer-use tools and your authenticated
+course-site session; you handle any login or MFA prompts.
+
+### Example requests
+
+Replace course names, dates, and links with your own. These prompts describe
+supported workflows; opening the project alone does not start any of them.
+
+| Use case | Example prompt |
+| --- | --- |
+| Set up a course | "Add CS 101, Introduction to Computer Science, for Fall 2026. Its course website is [course URL] and its Canvas page is [Canvas URL]." |
+| Create a lecture guide | "Import the CS 101 lecture from October 1, 2026 at [recording URL]. Create the complete guide with slides, Detailed and Fast explanations, Word bank terms, and practice questions." |
+| Explain a difficult topic | "Explain recursion using my saved CS 101 lectures. Walk through an example and cite the relevant lecture timestamps." |
+| Check upcoming work | "Check the official CS 101 course pages for assignments due next week. Compare them with my saved progress and tell me what remains." |
+| Work through an assignment | "Help me work through CS 101 Assignment 2 one part at a time. Read the official requirements, use the course's methods, explain each step, and run local checks. Save progress without submitting anything." |
+| Resume saved work | "Resume CS 101 Assignment 2 from its latest saved checkpoint. Explain where I left off and continue with the next part." |
+| Prepare for an exam | "Create a CS 101 practice exam covering lectures 1–8. Check the instructor's exam format, flag missing material, and include worked answers." |
+| Back up course content | "Set up Git backup for my workspace content using my private repository [private backup repository URL]. Exclude credentials, browser sessions, caches, and generated dependencies, then commit and push the course content." |
+
+Generated guides, files, and learning notes stay in the local course workspace.
+The agent does not submit assignments, take official quizzes, or change grades.
+See [the agent workflow](docs/AGENT_WORKFLOW.md) for the full contract.
 
 ## Checks
 
