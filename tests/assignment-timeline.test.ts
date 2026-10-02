@@ -443,6 +443,141 @@ test("saved directory and file API use the current workspace tree with immutable
   );
 });
 
+test("saved parts reveal net changes and serve matching paginated file diffs, including deletions", async () => {
+  const scope = await fixture();
+  await createAssignmentDirectory({ ...scope, path: "empty/nested" });
+  const paths = ["src/deep/edit.txt", "old/nested/gone.txt", "quiet/keep.txt"];
+  for (const file of paths) {
+    await writeAssignmentFile(
+      { ...scope, path: file, content: "before\n", explanation },
+      true,
+    );
+  }
+  const checkpoint = async (order: number, phase: "plan" | "completed") =>
+    recordAssignmentLearning({
+      ...scope,
+      part: { order, title: `Part ${order}` },
+      phase,
+      title: "Learning checkpoint",
+      markdown: "Record the assignment part and its current progress.",
+      ...(phase === "completed" ? { teachingMarkdown: teaching } : {}),
+      gaps,
+    });
+  const tree = async (stepId: string, directory?: string) => {
+    const result = await readAssignmentSnapshot({
+      ...scope,
+      stepId,
+      mode: "directory",
+      directory,
+    });
+    assert.ok("entries" in result);
+    return result;
+  };
+  const plan = await checkpoint(1, "plan");
+  assert.deepEqual((await tree(plan.stepId)).expandedDirectories, []);
+  const edited = await readAssignmentFile({ ...scope, path: paths[0] });
+  const intermediate = await writeAssignmentFile({
+    ...scope,
+    path: paths[0],
+    content: "temporary\n",
+    expectedRevision: edited.revision,
+    explanation,
+  });
+  await writeAssignmentFile({
+    ...scope,
+    path: paths[0],
+    content: "after\n",
+    expectedRevision: intermediate.revision,
+    explanation,
+  });
+  await writeAssignmentFile(
+    {
+      ...scope,
+      path: "src/new/added.txt",
+      content: "new\n".repeat(205),
+      explanation,
+    },
+    true,
+  );
+  await writeAssignmentFile(
+    { ...scope, path: "binary.bin", content: "a\0b", explanation },
+    true,
+  );
+  const listing = await listAssignmentFiles(scope);
+  await deleteAssignmentPath({
+    ...scope,
+    path: "old",
+    expectedRevision: listing.entries.find((entry) => entry.path === "old")!
+      .revision,
+    explanation,
+  });
+  await deleteAssignmentPath({
+    ...scope,
+    path: "empty",
+    expectedRevision: listing.entries.find((entry) => entry.path === "empty")!
+      .revision,
+    explanation,
+  });
+  const completed = await checkpoint(1, "completed");
+  assert.deepEqual((await tree(completed.stepId)).expandedDirectories?.sort(), [
+    "old",
+    "old/nested",
+    "src",
+    "src/deep",
+    "src/new",
+  ]);
+  const deleted = await tree(completed.stepId, "old/nested");
+  assert.equal(deleted.entries[0].change, "removed");
+  assert.equal(deleted.expandedDirectories, undefined);
+  const file = async (path: string, diffOffset = 0) => {
+    const response = await GET(
+      new NextRequest(
+        `http://localhost/api/assignment-timeline?${new URLSearchParams({ ...scope, stepId: completed.stepId, mode: "file", path, diffOffset: String(diffOffset) })}`,
+        { headers: { host: "localhost" } },
+      ),
+    );
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const changedFile = await file(paths[0]);
+  assert.equal(changedFile.content, "after\n");
+  assert.deepEqual(changedFile.diff.lines, [
+    { kind: "remove", text: "before\n", oldLine: 1 },
+    { kind: "add", text: "after\n", newLine: 1 },
+  ]);
+  const removedFile = await file(paths[1]);
+  assert.equal(removedFile.content, "before\n");
+  assert.deepEqual(removedFile.diff.lines, [
+    { kind: "remove", text: "before\n", oldLine: 1 },
+  ]);
+  assert.equal(
+    (
+      await assignmentStepBytes({
+        ...scope,
+        stepId: completed.stepId,
+        path: paths[1],
+      })
+    ).bytes.toString(),
+    "before\n",
+  );
+  const addedFile = await file("src/new/added.txt");
+  assert.equal(addedFile.diff.lines.length, 200);
+  assert.equal(addedFile.diff.nextOffset, 200);
+  assert.ok(
+    addedFile.diff.lines.every((line: { kind: string }) => line.kind === "add"),
+  );
+  const remainder = await file("src/new/added.txt", 200);
+  assert.equal(remainder.diff.lines.length, 5);
+  assert.equal(remainder.diff.lines[0].newLine, 201);
+  assert.equal(remainder.diff.nextOffset, null);
+  assert.equal((await file(paths[2])).diff, undefined);
+  const binary = await file("binary.bin");
+  assert.deepEqual(binary.diff.lines, []);
+  assert.match(binary.diff.message, /Binary change/);
+  const next = await checkpoint(2, "plan");
+  assert.deepEqual((await tree(next.stepId)).expandedDirectories, []);
+});
+
 test("shared changes, aliases, removals, empty folders and display order retain earlier states", async () => {
   const scope = await fixture();
   const shared = await writeAssignmentFile(
@@ -637,6 +772,15 @@ test("external changes are observed honestly, with bounded retention and read-on
   assert.ok("file" in detail && detail.file);
   assert.equal(detail.file.snapshot?.retained, false);
   assert.match(detail.diff.message, /metadata/);
+  const savedFile = await readAssignmentSnapshot({
+    ...scope,
+    stepId: learning.stepId,
+    path: "notes.txt",
+    mode: "file",
+  });
+  assert.ok("diff" in savedFile);
+  assert.match(savedFile.diff!.message, /metadata/);
+  assert.deepEqual(savedFile.diff!.lines, []);
   await assert.rejects(
     assignmentStepBytes({
       ...scope,

@@ -412,10 +412,12 @@ export async function getAssignmentTimeline(input: unknown) {
 export async function assignmentStepBytes(input: unknown) {
   const data = assignmentTimelineInput.parse(input);
   requireAssignment(await readState(), data.courseId, data.assignmentId);
-  const step = (
-    await readAssignmentSteps(data.courseId, data.assignmentId)
-  ).find((s) => s.id === data.stepId);
-  const file = step?.files.find((f) => f.path === data.path);
+  const steps = await readAssignmentSteps(data.courseId, data.assignmentId);
+  const index = steps.findIndex((s) => s.id === data.stepId);
+  if (index < 0) throw new Error("Step not found in this assignment");
+  const file =
+    steps[index].files.find((f) => f.path === data.path) ||
+    partBaseline(steps, index).files.find((f) => f.path === data.path);
   if (!file?.snapshot)
     throw new Error("File not found in this workspace state");
   const bytes = await loadSnapshot(data.courseId, file.snapshot);
@@ -436,6 +438,24 @@ export async function readAssignmentSnapshot(input: unknown) {
   const index = steps.findIndex((s) => s.id === data.stepId);
   if (index < 0) throw new Error("Step not found in this assignment");
   const step = steps[index];
+  const before = new Map(
+    partBaseline(steps, index).files.map((f) => [f.path, f]),
+  );
+  const after = new Map(step.files.map((f) => [f.path, f]));
+  function change(
+    file: TimelineFile,
+  ): "added" | "changed" | "removed" | undefined {
+    const old = before.get(file.path);
+    if (!after.has(file.path) || (file.missing && old && !old.missing))
+      return "removed";
+    if (file.type !== "file" || file.missing) return undefined;
+    if (!old || old.missing) return "added";
+    if (
+      old.snapshot?.hash !== file.snapshot?.hash ||
+      old.originalPath !== file.originalPath
+    )
+      return "changed";
+  }
   const root = `courses/${data.courseId}/files`;
   function original(file: TimelineFile) {
     if (!file.originalPath.startsWith("files/"))
@@ -452,35 +472,31 @@ export async function readAssignmentSnapshot(input: unknown) {
     };
   }
   if (data.mode === "directory") {
-    const before = new Map(
-      partBaseline(steps, index).files.map((f) => [f.path, f]),
-    );
-    const after = new Map(step.files.map((f) => [f.path, f]));
     // Keep removed folders navigable so their deleted children remain visible.
     const visible = [
       ...step.files,
       ...[...before.values()].filter((f) => !after.has(f.path)),
     ];
-    function change(
-      file: TimelineFile,
-    ): "added" | "changed" | "removed" | undefined {
-      const old = before.get(file.path);
-      if (!after.has(file.path) || (file.missing && old && !old.missing))
-        return "removed";
-      if (file.type !== "file" || file.missing) return undefined;
-      if (!old || old.missing) return "added";
-      if (
-        old.snapshot?.hash !== file.snapshot?.hash ||
-        old.originalPath !== file.originalPath
-      )
-        return "changed";
-    }
     if (
       data.directory &&
       !visible.some((f) => f.path === data.directory && f.type === "directory")
     )
       throw new Error("Folder not found in this workspace state");
     const result: AssignmentTree = {
+      expandedDirectories: data.directory
+        ? undefined
+        : [
+            ...new Set(
+              visible
+                .filter((file) => file.type === "file" && change(file))
+                .flatMap((file) => {
+                  const parents = file.path.split("/").slice(0, -1);
+                  return parents.map((_, i) =>
+                    parents.slice(0, i + 1).join("/"),
+                  );
+                }),
+            ),
+          ],
       courseId: data.courseId,
       assignmentId: data.assignmentId,
       root,
@@ -505,11 +521,43 @@ export async function readAssignmentSnapshot(input: unknown) {
     };
     return result;
   }
-  const file = step.files.find(
-    (f) => f.path === data.path && f.type === "file",
-  );
-  if (!file) throw new Error("File not found in this workspace state");
+  const current = after.get(data.path!);
+  const previous = before.get(data.path!);
+  const file = current || previous;
+  if (!file || file.type !== "file")
+    throw new Error("File not found in this workspace state");
   const bytes = await loadSnapshot(data.courseId, file.snapshot);
+  let diff: AssignmentFile["diff"];
+  if (change(file)) {
+    const unavailable = [previous, current].some(
+      (version) => version && !version.missing && !version.snapshot?.retained,
+    );
+    const comparison = unavailable
+      ? {
+          lines: [],
+          message:
+            "Saved contents are unavailable for this comparison; only metadata was retained.",
+          coarse: true,
+        }
+      : fileDiff(
+          previous && !previous.missing
+            ? await loadSnapshot(data.courseId, previous.snapshot)
+            : null,
+          current && !current.missing ? bytes : null,
+        );
+    diff = {
+      ...comparison,
+      lines: comparison.lines.slice(data.diffOffset, data.diffOffset + 200),
+      nextOffset:
+        data.diffOffset + 200 < comparison.lines.length
+          ? data.diffOffset + 200
+          : null,
+      message: comparison.message.replace(
+        /Download the before and after versions to compare\./,
+        "An inline text diff is unavailable.",
+      ),
+    };
+  }
   let content: string | undefined;
   if (bytes) {
     try {
@@ -520,6 +568,7 @@ export async function readAssignmentSnapshot(input: unknown) {
     }
   }
   const result: AssignmentFile = {
+    diff,
     path: file.path,
     workspacePath: original(file),
     absolutePath: safePath(original(file)),

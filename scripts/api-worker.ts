@@ -9,6 +9,7 @@ import * as timeline from "../src/app/api/assignment-timeline/route";
 import * as history from "../src/app/api/file-history/route";
 import * as commands from "../src/app/api/course-commands/route";
 import * as context from "../src/app/api/context/route";
+import * as explorer from "../src/app/api/file-explorer/route";
 import * as capture from "../src/app/api/capture/[id]/route";
 import * as artifact from "../src/app/api/capture/[id]/artifacts/[artifactId]/route";
 
@@ -22,6 +23,7 @@ const routes: Record<string, { GET?: Handler; POST?: Handler }> = {
   "/api/file-history": history,
   "/api/course-commands": commands,
   "/api/context": context,
+  "/api/file-explorer": explorer,
 };
 for await (const line of createInterface({ input: process.stdin })) {
   let response: Response;

@@ -7,6 +7,11 @@ data is sent through Vercel.
 This migration uses a Rust API/CLI with the existing TypeScript course engine in
 a private Node worker. The engine and MCP have **not** been rewritten in Rust.
 The worker communicates over stdin/stdout, with no separate HTTP server.
+Worker exchanges finish even when the browser disconnects, so refreshing cannot
+leave a reply for the next request. Capture images and reconstruction artifacts
+are served directly by Rust under the same authentication and origin checks.
+A small in-memory path index refreshes when `state.json` changes; image reads run
+independently of the course worker and do not cross its JSON/base64 transport.
 
 ## Install and run
 
@@ -41,6 +46,13 @@ For Windows with a WSL checkout, build in Ubuntu. The Node launcher detects WSL;
 per-user `course-captain` launcher is already registered in Windows and Ubuntu;
 open a new terminal to refresh PATH. Native Windows checkouts can use `npm link`.
 Run `cargo run -- run` during development instead of installing the command.
+
+The file viewer's **Open in file explorer** button sends an authenticated POST
+to the daemon. Windows reveals the file in Explorer, macOS reveals it in Finder,
+and Linux opens its containing folder with `xdg-open` (requires a desktop file
+manager). WSL converts the path with `wslpath` and launches Windows Explorer.
+Saved steps reveal the original path on disk; if it is gone, the nearest existing
+course-files folder opens. Restart the daemon after updating its API worker.
 
 ## Private workspace
 

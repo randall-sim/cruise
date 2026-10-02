@@ -1,3 +1,5 @@
+mod assets;
+
 use axum::{
     Router,
     body::{Body, to_bytes},
@@ -29,7 +31,8 @@ struct App {
     token: String,
     port: u16,
     origins: Vec<String>,
-    // ponytail: one IPC request at a time; use request IDs if multi-user throughput becomes necessary.
+    assets: assets::Assets,
+    // Serialize course operations; image reads bypass this worker.
     worker: Mutex<Option<Worker>>,
 }
 
@@ -174,12 +177,25 @@ async fn api(State(app): State<Arc<App>>, request: Request) -> Response {
     if ![Method::GET, Method::POST].contains(request.method()) {
         return error(StatusCode::METHOD_NOT_ALLOWED, "Method not allowed");
     }
+    if request.method() == Method::GET {
+        if let Some(response) = app.assets.serve(&app.workspace, request.uri()).await {
+            return response;
+        }
+    }
     let (parts, body) = request.into_parts();
     let bytes = match to_bytes(body, MAX_BODY).await {
         Ok(bytes) => bytes,
         Err(_) => return error(StatusCode::PAYLOAD_TOO_LARGE, "Request body is too large"),
     };
     let wire = json!({"method":parts.method.as_str(), "url":parts.uri.to_string(), "contentType":parts.headers.get("content-type").and_then(|v|v.to_str().ok()), "body":STANDARD.encode(bytes)});
+    // Finish consuming the reply even if a refresh cancels the HTTP handler.
+    // Otherwise the next request can receive this request's (possibly partial) reply.
+    tokio::spawn(worker_request(app, wire))
+        .await
+        .unwrap_or_else(|_| error(StatusCode::BAD_GATEWAY, "Course worker request failed"))
+}
+
+async fn worker_request(app: Arc<App>, wire: serde_json::Value) -> Response {
     let mut slot = app.worker.lock().await;
     if slot.is_none() {
         match Worker::start(&app) {
@@ -311,6 +327,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         token,
         port,
         origins,
+        assets: assets::Assets::default(),
         worker: Mutex::new(None),
     });
     axum::serve(listener, router(app.clone()))
@@ -346,6 +363,7 @@ mod tests {
             token: "secret".into(),
             port: 4321,
             origins: vec!["https://course.vercel.app".into()],
+            assets: assets::Assets::default(),
             worker: Mutex::new(None),
         });
         for (host, origin, auth, method, status) in [
@@ -409,5 +427,81 @@ mod tests {
         assert!(!valid_origin("https://user@example.com"));
         assert!(!valid_origin("http://example.com"));
         assert!(valid_origin("https://course.vercel.app"));
+    }
+
+    #[tokio::test]
+    async fn cancelled_request_does_not_shift_or_truncate_worker_responses() {
+        for partial_response in [false, true] {
+            let mut child = Command::new("node")
+                .args([
+                    "--input-type=module",
+                    "--eval",
+                    r#"
+import { createInterface } from 'node:readline';
+for await (const line of createInterface({ input: process.stdin })) {
+    const { url } = JSON.parse(line);
+    const response = JSON.stringify({ status: 200, headers: {}, body: Buffer.from(url).toString('base64') }) + '\n';
+    if (url === '/api/first') {
+        const split = process.env.PARTIAL_RESPONSE === 'true' ? 15 : 0;
+        process.stdout.write(response.slice(0, split));
+        process.stderr.write('started\n');
+        await new Promise(resolve => setTimeout(resolve, 500));
+        process.stdout.write(response.slice(split));
+    } else process.stdout.write(response);
+}
+"#,
+                ])
+                .env("PARTIAL_RESPONSE", partial_response.to_string())
+                .stdin(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .kill_on_drop(true)
+                .spawn()
+                .unwrap();
+            let mut started = BufReader::new(child.stderr.take().unwrap());
+            let worker = Worker {
+                input: child.stdin.take().unwrap(),
+                output: BufReader::new(child.stdout.take().unwrap()),
+                child,
+            };
+            let app = Arc::new(App {
+                home: PathBuf::new(),
+                workspace: PathBuf::new(),
+                token: "secret".into(),
+                port: 4321,
+                origins: vec![],
+                assets: assets::Assets::default(),
+                worker: Mutex::new(Some(worker)),
+            });
+            let request = |path| {
+                Request::builder()
+                    .uri(path)
+                    .header("host", "127.0.0.1:4321")
+                    .header("authorization", "Bearer secret")
+                    .body(Body::empty())
+                    .unwrap()
+            };
+            let first = tokio::spawn(router(app.clone()).oneshot(request("/api/first")));
+            let mut signal = String::new();
+            tokio::time::timeout(Duration::from_secs(5), started.read_line(&mut signal))
+                .await
+                .unwrap()
+                .unwrap();
+            assert_eq!(signal, "started\n");
+            first.abort();
+            assert!(first.await.unwrap_err().is_cancelled());
+            for path in ["/api/second", "/api/third"] {
+                let response = tokio::time::timeout(
+                    Duration::from_secs(5),
+                    router(app.clone()).oneshot(request(path)),
+                )
+                .await
+                .unwrap()
+                .unwrap();
+                assert_eq!(response.status(), StatusCode::OK);
+                let body = to_bytes(response.into_body(), MAX_BODY).await.unwrap();
+                assert_eq!(body.as_ref(), path.as_bytes());
+            }
+        }
     }
 }

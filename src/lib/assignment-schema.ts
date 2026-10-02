@@ -128,6 +128,7 @@ export type AssignmentEntry = {
   absolutePath?: string;
 };
 export type AssignmentTree = {
+  expandedDirectories?: string[];
   courseId: string;
   assignmentId?: string;
   root: string;
@@ -136,6 +137,12 @@ export type AssignmentTree = {
   revision: string;
 };
 export type AssignmentFile = {
+  diff?: {
+    lines: import("./file-diff").DiffLine[];
+    message: string;
+    coarse: boolean;
+    nextOffset: number | null;
+  };
   snapshotNotice?: string;
   path: string;
   workspacePath: string;
