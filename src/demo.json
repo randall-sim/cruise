@@ -1,0 +1,281 @@
+{
+  "courses": [
+    {
+      "code": "CS 240",
+      "name": "Data Structures & Algorithms",
+      "term": "Example semester",
+      "color": "green"
+    },
+    {
+      "code": "MATH 221",
+      "name": "Linear Algebra",
+      "term": "Example semester",
+      "color": "purple"
+    },
+    {
+      "code": "CS 310",
+      "name": "Computer Systems",
+      "term": "Example semester",
+      "color": "orange"
+    }
+  ],
+  "lecture": {
+    "title": "Thinking recursively",
+    "transcript": "WEBVTT\n\n00:00:00.000 --> 00:02:00.000\nThis is a short fictional example lecture. A recursive algorithm solves a problem using smaller instances of the same problem. A base case stops the recursion. Each recursive step must make progress toward that base case.\n\n00:02:00.000 --> 00:04:30.000\nConsider merge sort. Split an array into two halves, recursively sort each half, then merge the sorted halves. An array of length zero or one is already sorted, so this is the base case. The merge operation takes linear time in the total number of elements.\n\n00:04:30.000 --> 00:07:00.000\nThe recurrence is T(n) = 2T(n/2) + O(n). There are logarithmically many levels in the recursion tree, and each level does O(n) work. The total running time is O(n log n). The standard array implementation also uses O(n) auxiliary space.\n\n00:07:00.000 --> 00:09:00.000\nCompare this with binary search. Binary search recursively examines only one half, and does constant work at each level. Its recurrence is T(n) = T(n/2) + O(1), giving O(log n) time. Binary search requires the search interval to be sorted.\n\n00:09:00.000 --> 00:10:30.000\nA useful correctness argument is induction on input size. First prove the base case. Next assume the recursive calls correctly handle smaller inputs, then show the combination step yields the correct result for the whole input. Termination additionally requires that the input size decreases.\n\n00:10:30.000 --> 00:12:00.000\nFor this fictional course, the practice sheet asks you to draw a recursion tree and explain the work per level. This is sample course logistics, not a real deadline. Check both the base case and the shrinking input before analyzing a recurrence.\n",
+    "captureCoverage": "Fictional transcript for exploring the app. No real lecture video or screenshots are attached."
+  },
+  "guide": {
+    "summary": "Recursion becomes easier to reason about when you separate three questions: does it stop, is it correct, and how much work does it do? This example follows merge sort and binary search to answer each one.",
+    "sections": [
+      {
+        "title": "The shape of a recursive solution",
+        "markdown": "A recursive algorithm reduces a problem to smaller instances of itself. Two ingredients make that safe:\n\n1. **A base case** that can be answered directly.\n2. **Progress** toward that base case on every recursive call.\n\nThink of recursion as a contract: the smaller call gives you a correct answer, and your job is to combine it into a correct answer to the current problem.",
+        "citations": [
+          "DEMO_LECTURE:t0",
+          "DEMO_LECTURE:t4"
+        ],
+        "fastMarkdown": "- A recursive solution delegates smaller instances of the same problem.\n- Include a directly solvable base case.\n- Every recursive call must progress toward that case."
+      },
+      {
+        "title": "Merge sort: split, solve, combine",
+        "markdown": "Merge sort splits the array into two halves, sorts both recursively, then merges the results. The base case is an array with at most one element.\n\nThe recurrence **T(n) = 2T(n/2) + O(n)** records two recursive calls and a linear merge. Each level of the recursion tree performs O(n) total work. With O(log n) levels, the running time is **O(n log n)**. The standard array implementation needs **O(n) auxiliary space**.",
+        "citations": [
+          "DEMO_LECTURE:t1",
+          "DEMO_LECTURE:t2"
+        ],
+        "fastMarkdown": "- Merge sort recursively sorts both halves, then merges.\n- The recurrence is T(n) = 2T(n/2) + O(n).\n- O(n) work over O(log n) levels gives O(n log n) time.\n- The standard array implementation uses O(n) auxiliary space."
+      },
+      {
+        "title": "Why binary search is different",
+        "markdown": "Binary search explores just **one half** of a sorted interval, with constant work per level. Its recurrence is T(n) = T(n/2) + O(1), giving O(log n) time.\n\n| Algorithm | Recursive calls | Work per level | Total time |\n| --- | --- | --- | --- |\n| Merge sort | Both halves | O(n) | O(n log n) |\n| Binary search | One half | O(1) | O(log n) |\n\nHalving the input alone does not imply logarithmic runtime. Count the branches and the work done across a whole level.",
+        "citations": [
+          "DEMO_LECTURE:t2",
+          "DEMO_LECTURE:t3"
+        ],
+        "fastMarkdown": "- Binary search requires a sorted interval.\n- Each comparison discards one half and continues in the other.\n- One recursive branch with constant work gives O(log n) time.\n- Halving alone does not determine runtime: count branches and work."
+      },
+      {
+        "title": "A proof you can reuse",
+        "markdown": "To prove a recursive algorithm correct, use induction on input size: establish the base case, assume smaller calls are correct, and prove the combination step. Prove termination separately by showing the input gets smaller.",
+        "citations": [
+          "DEMO_LECTURE:t4"
+        ],
+        "fastMarkdown": "- Prove the base case directly.\n- Assume correctness for smaller inputs and justify the combination step.\n- Prove termination separately by showing progress toward the base case."
+      }
+    ],
+    "logistics": [
+      {
+        "text": "Example practice: draw a recursion tree and explain the work per level. This is demonstration content, not a real assignment.",
+        "citations": [
+          "DEMO_LECTURE:t5"
+        ]
+      }
+    ],
+    "concepts": [
+      {
+        "term": "Base case",
+        "definition": "An instance that can be solved directly without making another recursive call.",
+        "citations": [
+          "DEMO_LECTURE:t0"
+        ]
+      },
+      {
+        "term": "Recurrence relation",
+        "definition": "An expression for an algorithm’s cost in terms of the cost of smaller instances and the work done at the current step.",
+        "citations": [
+          "DEMO_LECTURE:t2",
+          "DEMO_LECTURE:t3"
+        ]
+      },
+      {
+        "term": "Inductive hypothesis",
+        "definition": "The assumption that recursive calls correctly solve smaller inputs, used to prove the current step correct.",
+        "citations": [
+          "DEMO_LECTURE:t4"
+        ]
+      }
+    ],
+    "questions": [
+      {
+        "question": "What permits a recursive algorithm to stop?",
+        "options": [
+          {
+            "text": "A reachable base case and progress toward it.",
+            "explanation": "Correct: the calls eventually reach an instance solved directly."
+          },
+          {
+            "text": "Calling the same input again.",
+            "explanation": "An unchanged input does not progress toward termination."
+          },
+          {
+            "text": "Dividing the running time by two.",
+            "explanation": "Runtime arithmetic does not establish termination."
+          }
+        ],
+        "correctOption": 0,
+        "answer": "A base case stops recursion only when recursive calls make progress toward reaching it.",
+        "citations": [
+          "DEMO_LECTURE:t0",
+          "DEMO_LECTURE:t4"
+        ]
+      },
+      {
+        "question": "Which input is a merge-sort base case?",
+        "options": [
+          {
+            "text": "An arbitrary unsorted array.",
+            "explanation": "Larger unsorted arrays still need recursive sorting."
+          },
+          {
+            "text": "An array of length zero or one.",
+            "explanation": "Correct: these arrays are already sorted."
+          },
+          {
+            "text": "Only an array of length two.",
+            "explanation": "Zero- and one-element arrays are the stated base cases."
+          }
+        ],
+        "correctOption": 1,
+        "answer": "An array with at most one element needs no recursive sorting.",
+        "citations": [
+          "DEMO_LECTURE:t1"
+        ]
+      },
+      {
+        "question": "Which recurrence describes the demonstrated merge sort?",
+        "options": [
+          {
+            "text": "T(n) = T(n/2) + O(1).",
+            "explanation": "That describes following one half with constant work, as in binary search."
+          },
+          {
+            "text": "T(n) = 2T(n/2) + O(n).",
+            "explanation": "Correct: two half-size recursive sorts plus a linear merge."
+          },
+          {
+            "text": "T(n) = T(n-1) + O(n).",
+            "explanation": "The demonstrated algorithm splits in halves rather than removing one element."
+          }
+        ],
+        "correctOption": 1,
+        "answer": "Both halves are sorted recursively and merging their elements takes linear work.",
+        "citations": [
+          "DEMO_LECTURE:t1",
+          "DEMO_LECTURE:t2"
+        ]
+      },
+      {
+        "question": "What is the total work across one level of the merge-sort tree?",
+        "options": [
+          {
+            "text": "O(1).",
+            "explanation": "There are many subproblems whose total merge work is not constant."
+          },
+          {
+            "text": "O(log n).",
+            "explanation": "This counts the number of levels, not the work across a level."
+          },
+          {
+            "text": "O(n).",
+            "explanation": "Correct: the subproblem sizes across the level sum to the input size."
+          }
+        ],
+        "correctOption": 2,
+        "answer": "The level performs linear total work even though it contains multiple smaller merges.",
+        "citations": [
+          "DEMO_LECTURE:t2"
+        ]
+      },
+      {
+        "question": "What is merge sort's running time in this example?",
+        "options": [
+          {
+            "text": "O(n log n).",
+            "explanation": "Correct: linear work at each of logarithmically many levels."
+          },
+          {
+            "text": "O(log n).",
+            "explanation": "That omits the linear work done across each level."
+          },
+          {
+            "text": "O(1).",
+            "explanation": "The algorithm must process an input whose size varies."
+          }
+        ],
+        "correctOption": 0,
+        "answer": "Multiplying O(n) work per level by O(log n) levels gives O(n log n).",
+        "citations": [
+          "DEMO_LECTURE:t2"
+        ]
+      },
+      {
+        "question": "What condition does binary search require?",
+        "options": [
+          {
+            "text": "The input must contain no repeated values.",
+            "explanation": "Distinctness is not the condition stated in this lecture."
+          },
+          {
+            "text": "The search interval must be sorted.",
+            "explanation": "Correct: ordering supports discarding half after a comparison."
+          },
+          {
+            "text": "Both halves must be searched.",
+            "explanation": "Searching both halves would remove the advantage described here."
+          }
+        ],
+        "correctOption": 1,
+        "answer": "A sorted interval allows one comparison to rule out half of the remaining positions.",
+        "citations": [
+          "DEMO_LECTURE:t3"
+        ]
+      },
+      {
+        "question": "Why do merge sort and binary search have different runtimes?",
+        "options": [
+          {
+            "text": "Any algorithm that halves its input has the same runtime.",
+            "explanation": "Halving does not tell us how many branches are explored or how much work is done."
+          },
+          {
+            "text": "Binary search sorts both halves first.",
+            "explanation": "The example assumes a sorted interval and follows only one half."
+          },
+          {
+            "text": "Merge sort follows both halves with linear work; binary search follows one with constant work.",
+            "explanation": "Correct: branch count and work per level explain the difference."
+          }
+        ],
+        "correctOption": 2,
+        "answer": "Merge sort does O(n) work per level, while binary search does O(1), over logarithmically many levels.",
+        "citations": [
+          "DEMO_LECTURE:t2",
+          "DEMO_LECTURE:t3"
+        ]
+      },
+      {
+        "question": "How is the inductive hypothesis used for recursive correctness?",
+        "options": [
+          {
+            "text": "Assume smaller calls are correct and prove the combination step.",
+            "explanation": "Correct: together with the base case, this establishes the larger result."
+          },
+          {
+            "text": "Assume the complete algorithm is correct without checking the base case.",
+            "explanation": "That skips the necessary starting point of the induction."
+          },
+          {
+            "text": "Use the runtime bound as the correctness proof.",
+            "explanation": "A runtime bound does not show that the computed result is correct."
+          }
+        ],
+        "correctOption": 0,
+        "answer": "Establish the base case, assume correctness for smaller inputs, and justify how their results solve the current input.",
+        "citations": [
+          "DEMO_LECTURE:t4"
+        ]
+      }
+    ],
+    "gaps": []
+  }
+}

@@ -1,7 +1,7 @@
 # Local storage and independent repositories
 
-The daemon application owns src/, scripts/, docs/, AGENTS.md, Cargo and Node
-manifests, and tests. It ignores the entire workspace/ directory.
+The daemon application owns src/, scripts/, docs/, AGENTS.md, Cargo manifests,
+and tests. It ignores the entire workspace/ directory.
 
 The default content root is daemon/workspace/content/, a separate private Git
 repository containing the unchanged state.json, courses/, Markdown, captures,
@@ -15,8 +15,8 @@ own tracked remote. Never push coursework to an instructor or submission repo.
 Credentials, browser sessions, .runtime, .cache, and .secrets remain ignored.
 No remote, automatic sync or GitHub upload is created by starting the daemon.
 
-The Rust process serves the local API; its private Node worker runs existing
-course logic. The browser fetches data and assets directly from loopback using
+The Rust process serves the local API and runs the course engine, MCP, retrieval,
+file history and local commands. The browser fetches data and assets from loopback using
 an explicit allowed frontend origin and a connection key. Vercel serves only
 the frontend. Server-side rendering must never try to read this local workspace.
 

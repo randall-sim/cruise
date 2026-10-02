@@ -25,28 +25,27 @@ projects. Reopen the repository/start a new session after configuration changes;
 an already-running session may retain its old tool list. If Codex requests project
 trust, handle that in Codex. Setup never changes global settings or trust.
 
-The launcher detects Windows WSL UNC paths and runs the bridge inside the correct
-Linux distribution, where this checkout's dependencies are installed. On native
-Linux/macOS/Windows checkouts it uses the host's Node.js. No shell interpolation,
+The project launches the native Rust MCP executable. Windows Codex with a WSL
+checkout uses `wsl.exe` to start it in the configured distribution. No Node.js,
 automatic dependency installation, external API key for Codex, or web port is used.
 
-After moving/cloning the repository or changing the Codex host, install its
-dependencies (`npm ci`, in WSL for a WSL checkout), then run this **on the same OS
-as the Codex host** from the repository:
+After moving/cloning the repository or changing the Codex host, build and install
+the executable, then configure it from this repository:
 
 ```sh
-node scripts/setup-codex.mjs
-node scripts/check-mcp.mjs
+cargo install --path . --force
+cruise setup-codex
+cruise check-mcp
 ```
 
-For this setup, run those two commands in Windows PowerShell at the WSL UNC repo
-path. For a Linux Codex host, run them in Linux. The generated configuration uses
+For this machine, run setup in WSL with `cruise setup-codex --windows-host`; the
+installed Windows launcher also forwards that command into WSL. The config uses
 absolute paths so starting a task in a course subdirectory also works. It is
 versioned in this private repo; forks should regenerate it for their machine.
 The setup command updates only its marked block and preserves other project
-settings. If Node's install location changes, regenerate the configuration.
+settings. If the executable location changes, regenerate the configuration.
 
-`check-mcp` actually connects over stdio, lists tools and reads workspace metadata.
+`check-mcp` exercises the native stdio protocol, lists tools and reads workspace metadata.
 It does not browse accounts, create courses or process pending jobs. Use
 `codex mcp get course-captain --json` to inspect the configuration Codex resolves.
 
@@ -109,7 +108,7 @@ For user-requested ingestion, `create_course`, `import_lecture`,
 Codex browser workflow to the local workspace. The transcript importer requires
 real VTT/SRT timestamps; screenshot ingestion requires the actual image and its
 lecture time. `queue_study_job` snapshots that evidence for a guide or study task.
-The bridge itself does not control Chrome; use the capture worker or your
+The daemon itself does not control Chrome; use your
 authorized Codex browser tools for that part.
 
 1. For a new user request, call `queue_study_job`. For a request to process existing

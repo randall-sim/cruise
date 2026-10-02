@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [[bin]]
-name = "course-captain"
+name = "cruise"
 path = "src/main.rs"
 
 [dependencies]
@@ -15,6 +15,15 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 tokio = { version = "1", features = ["macros", "rt-multi-thread", "net", "process", "io-util", "signal", "sync", "time", "fs"] }
 dotenvy = "0.15"
+chrono = { version = "0.4", features = ["clock"] }
+uuid = { version = "1", features = ["v4"] }
+regex = "1"
+sha2 = "0.10"
+url = "2"
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "webp"] }
+jsonschema = { version = "0.33", default-features = false }
+filetime = "0.2"
+tungstenite = "0.28"
 
 [dev-dependencies]
 tower = { version = "0.5", features = ["util"] }

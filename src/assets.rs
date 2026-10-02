@@ -1,4 +1,4 @@
-//! Authenticated capture bytes stay out of the serial course-engine transport.
+//! Authenticated capture reads run independently of workspace mutations.
 use axum::{
     body::Body,
     extract::Query,
@@ -561,17 +561,21 @@ mod tests {
         for file in ["capture.png", "diagram.svg", "diagram.json"] {
             fs::write(fixture.0.join(file), b"asset").await.unwrap();
         }
+        let key_path = fixture.0.join("connection-key");
+        let token = cc_daemon::connection::load_or_create(&key_path).unwrap();
+        let bearer = format!("Bearer {token}");
         let app = Arc::new(App {
-            home: PathBuf::new(),
             workspace: fixture.0.clone(),
-            token: "secret".into(),
+            key_path,
             port: 4321,
             origins: vec!["https://course.vercel.app".into()],
             assets: Assets::default(),
-            worker: Mutex::new(None),
         });
-        // The old route would wait forever here, or try to start the absent Node worker.
-        let worker = app.worker.lock().await;
+        let lock = fixture.0.with_file_name(format!(
+            "{}.lock",
+            fixture.0.file_name().unwrap().to_string_lossy()
+        ));
+        fs::create_dir(&lock).await.unwrap();
         for url in [
             "/api/capture/capture-1",
             "/api/capture/capture-1/artifacts/diagram-1",
@@ -579,7 +583,7 @@ mod tests {
         ] {
             for (authorization, expected) in [
                 ("", StatusCode::UNAUTHORIZED),
-                ("Bearer secret", StatusCode::OK),
+                (bearer.as_str(), StatusCode::OK),
             ] {
                 let request = Request::builder()
                     .uri(url)
@@ -593,7 +597,7 @@ mod tests {
                     router(app.clone()).oneshot(request),
                 )
                 .await
-                .expect("images must not wait for the course worker")
+                .expect("images must not wait for workspace mutations")
                 .unwrap();
                 assert_eq!(response.status(), expected);
                 assert_eq!(response.headers()["cache-control"], "no-store");
@@ -603,6 +607,7 @@ mod tests {
                 );
             }
         }
-        assert!(worker.is_none());
+        assert!(lock.exists());
+        fs::remove_dir(lock).await.unwrap();
     }
 }

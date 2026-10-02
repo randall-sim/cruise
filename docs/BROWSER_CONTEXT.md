@@ -1,6 +1,6 @@
 # Course evidence in browser side chat
 
-Open Course Captain in Chrome, open a course or lecture, then use the ChatGPT
+Open cruise in Chrome, open a course or lecture, then use the ChatGPT
 extension's side chat. The **Course context** link in the top bar points to a
 read-only page for that course or lecture. Ask, for example:
 

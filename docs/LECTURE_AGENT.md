@@ -158,7 +158,7 @@ On this desktop the explicit spawn arguments supply the same model and contract.
    Preserve each distinct slide, completed whiteboard diagram/derivation, and
    meaningful demonstration state with timestamp and stream provenance. Sampling
    is only candidate detection: visually inspect transitions and final states.
-   Use authorized browser tools or the documented capture worker, and follow the
+   Use authorized browser tools and the native MCP capture tools, and follow the
    active computer-use skill's restrictions; do not bypass them via another tool.
    **Prefer original slides for static slide images.** When a deck matches the
    lecture, render or capture its actual pages at readable resolution using
