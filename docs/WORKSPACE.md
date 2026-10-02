@@ -3,7 +3,7 @@
 The daemon application owns src/, scripts/, docs/, AGENTS.md, Cargo manifests,
 and tests. It ignores the entire workspace/ directory.
 
-The default content root is daemon/workspace/content/, a separate private Git
+The default content root is cruise/workspace/content/, a separate private Git
 repository containing the unchanged state.json, courses/, Markdown, captures,
 file history and course files. COURSE_CAPTAIN_WORKSPACE overrides that root;
 relative values resolve against the daemon checkout. HTTP, MCP and capture must

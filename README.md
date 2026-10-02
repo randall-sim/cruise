@@ -1,4 +1,4 @@
-# cruise daemon (`cc-daemon`)
+# cruise
 
 The local backend owns course storage, agent instructions, MCP, capture and local
 course execution. The browser talks to the Rust HTTP process directly; no course
@@ -11,10 +11,12 @@ use the same authentication and origin checks as the API.
 
 ## Install and run
 
-Requires the Rust toolchain to build. In this directory:
+Requires Git and the Rust toolchain. Clone the repository and install:
 
 ```sh
-cargo install --path . --force
+git clone https://github.com/randall-sim/cruise.git
+cd cruise
+cargo install --locked --path . --force
 cruise run
 ```
 
@@ -63,7 +65,7 @@ course-files folder opens. Rebuild and restart the daemon after updating it.
 ## Private workspace
 
 ```text
-daemon/                   # cc-daemon application Git repository
+cruise/                   # application Git repository
   AGENTS.md
   docs/
   workspace/              # entirely ignored by application Git
@@ -92,12 +94,11 @@ must never be used as backup destinations.
 
 ## Codex
 
-**Open the daemon repository folder as your project in Codex.** In the split
-checkout, select `course-captain/daemon`; if you cloned `cc-daemon` by itself,
-select that clone's root. This is the folder containing `AGENTS.md`, `Cargo.toml`,
-and `scripts/`. Use this folder for course work rather than the
-frontend or the nested content repository, so Codex loads the daemon's agent
-instructions and project tools.
+**Open the cloned `cruise` folder as your project in Codex.** This is the
+repository root containing `AGENTS.md`, `Cargo.toml`, and `scripts/`. Use this
+folder for course work so Codex loads its agent instructions and project tools.
+The separate [cruise-web](https://github.com/randall-sim/cruise-web) repository
+contains the browser frontend.
 
 After installing the executable, run these commands from the daemon folder:
 
